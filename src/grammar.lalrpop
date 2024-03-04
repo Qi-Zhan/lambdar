@@ -1,0 +1,55 @@
+use std::str::FromStr;
+use crate::cst::*;
+
+grammar;
+
+pub Expr: Box<Expr> = {
+    #[precedence(level="0")]
+    <n:INT_CONST> => Box::new(Expr::Integer(n)),
+    "nil" => Box::new(Expr::Nil),
+    "true" => Box::new(Expr::Bool(true)),
+    "false" => Box::new(Expr::Bool(false)),
+    <n:ID> => Box::new(Expr::Variable(n)),
+    "(" <e:Expr> ")" => e,
+    <e1: ID> "(" <e: EXPR_LIST> ")" => Box::new(Expr::App(<>)),
+    #[precedence(level="1")] #[assoc(side="left")]
+    <l:Expr> "*" <r:Expr> => Box::new(Expr::Op(l, BinOp::Arith(ArithOp::Mul), r)),
+    #[precedence(level="2")] #[assoc(side="left")]
+    <l:Expr> "+" <r:Expr> => Box::new(Expr::Op(l, BinOp::Arith(ArithOp::Add), r)),
+    <l:Expr> "-" <r:Expr> => Box::new(Expr::Op(l, BinOp::Arith(ArithOp::Sub), r)),
+    #[precedence(level="3")] #[assoc(side="left")]
+    <l:Expr> "==" <r:Expr> => Box::new(Expr::Op(l, BinOp::Pred(Pred::Eq), r)),
+    <l:Expr> "<" <r:Expr> => Box::new(Expr::Op(l, BinOp::Pred(Pred::Lt), r)),
+    <l:Expr> "<=" <r:Expr> => Box::new(Expr::Op(l, BinOp::Pred(Pred::Le), r)),
+    <l:Expr> ">" <r:Expr> => Box::new(Expr::Op(l, BinOp::Pred(Pred::Gt), r)),
+    <l:Expr> ">=" <r:Expr> => Box::new(Expr::Op(l, BinOp::Pred(Pred::Ge), r)),
+    #[precedence(level="4")] #[assoc(side="right")]
+    <l:Expr> "::" <r:Expr> => Box::new(Expr::Cons(<>)),
+    #[precedence(level="5")]
+    "let" <n:ID> "=" <v:Expr> ";" <b:Expr> => Box::new(Expr::Let(<>)),
+    "fn" <n:ID> "(" <ids: ID_LIST> ")" "{" <b: Expr> "}" <e:Expr> => Box::new(Expr::Fun(<>)),
+    "fn" "rec" <n:ID> "(" <ids: ID_LIST> ")" "{" <b: Expr> "}" <e:Expr> => Box::new(Expr::RecFun(<>)),
+    "if" <c:Expr> "{" <t:Expr> "}" "else" "{" <e:Expr> "}" => Box::new(Expr::If(<>)),
+    "match" <e: Expr> "{" "nil" "=>" <n:Expr> "," <c:ID> "::" <cs:ID> "=>" <b:Expr> "}" => Box::new(Expr::Match(<>)),
+};
+
+ID_LIST: Vec<String> = {
+    <i:ID> => vec![i],
+    <i:ID> "," <t:ID_LIST> => {
+        let mut v = t;
+        v.insert(0, i);
+        v
+    },
+};
+
+EXPR_LIST: Vec<Expr> = {
+    <i:Expr> => vec![*i],
+    <i:Expr> "," <t:EXPR_LIST> => {
+        let mut v = t;
+        v.insert(0, *i);
+        v
+    },
+};
+
+INT_CONST: i32 = <s:r"[0-9]+"> => i32::from_str(s).unwrap();
+ID: String = <s:r"[a-zA-Z_][a-zA-Z0-9_]*"> => s.to_string();

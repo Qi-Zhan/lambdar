@@ -1,0 +1,17 @@
+let list = 3::1::nil;
+
+fn first(list) {
+    match list {
+        nil => 0,
+        x::xs => x
+    }
+}
+
+fn rest(list) {
+    match list {
+        nil => nil,
+        x::xs => xs
+    }
+}
+
+first(list) + first(rest(list))
